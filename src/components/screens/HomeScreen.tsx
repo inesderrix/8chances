@@ -13,6 +13,7 @@ interface HomeScreenProps {
   onToggleSound: () => void;
   rankingQuestionsLoading: boolean;
   rankingQuestionsError: boolean;
+  round2ChallengesError: boolean;
 }
 
 const starPositions = Array.from({ length: 60 }, (_, i) => ({
@@ -34,6 +35,7 @@ export function HomeScreen({
   onToggleSound,
   rankingQuestionsLoading,
   rankingQuestionsError,
+  round2ChallengesError,
 }: HomeScreenProps) {
   const [showStats, setShowStats] = useState(false);
   const [showRules, setShowRules] = useState(false);
@@ -71,7 +73,7 @@ export function HomeScreen({
               </div>
               <div>
                 <strong style={{ color: 'var(--color-text)' }}>📺 Manche 2 – Les 8 écrans</strong>
-                <p>Vous avez 8 écrans (vos chances). Relevez 5 défis successifs. Pour chaque défi, identifiez ou citez 8 réponses. Chaque mauvaise réponse éteint un écran. Conservez au moins 1 écran pour accéder à la Finale.</p>
+                <p>Vous avez 8 écrans (vos chances). Relevez jusqu’à 5 défis successifs. Pour chaque défi, identifiez ou citez 8 réponses. Chaque mauvaise réponse éteint un écran. Conservez au moins 1 écran pour accéder à la Finale.</p>
               </div>
               <div>
                 <strong style={{ color: 'var(--color-text)' }}>🏆 Finale – Les 8 thèmes</strong>
@@ -240,6 +242,12 @@ export function HomeScreen({
           {rankingQuestionsError && (
             <p role="status" style={{ margin: 0, color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
               Banque mondiale indisponible : la partie utilise les questions hors ligne.
+            </p>
+          )}
+
+          {round2ChallengesError && (
+            <p role="alert" style={{ margin: 0, color: 'var(--color-error)', fontSize: '0.8rem' }}>
+              Wikidata est indisponible : impossible de préparer la manche 2. Réessaie dans un instant.
             </p>
           )}
 

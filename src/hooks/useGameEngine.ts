@@ -9,7 +9,7 @@ import { shuffle, pickRandom, getRank, pointsForRank, computerPickWeighted } fro
 import { saveGameState, loadGameState, clearGameState, loadStats, saveStats } from '../services/storage';
 import { fetchFinalQuizQuestions } from '../services/quizApi';
 import { fetchRankingQuestions } from '../services/rankingApi';
-import { createRound2Challenges, fetchOpenRound2Challenges } from '../services/challengeApi';
+import { fetchOpenRound2Challenges } from '../services/challengeApi';
 import { FINAL_POINTS } from '../types/game';
 
 const ALL_THEMES: FinalTheme[] = [
@@ -33,23 +33,10 @@ function createInitialRound1(selectedQuestions: RankingQuestion[]): Round1State 
 }
 
 function createInitialRound2(
-  availableRankingQuestions: RankingQuestion[],
   openApiChallenges: Challenge2[],
 ): Round2State {
-  const localChallenges = createRound2Challenges([
-    ...availableRankingQuestions,
-    ...rankingQuestions,
-  ]);
-  const selectedApiChallenges = pickRandom(openApiChallenges, Math.min(4, openApiChallenges.length));
-  const selectedIds = new Set(selectedApiChallenges.map(challenge => challenge.id));
-  const remainingLocalChallenges = localChallenges.filter(challenge => !selectedIds.has(challenge.id));
-  const selected = [
-    ...selectedApiChallenges,
-    ...pickRandom(remainingLocalChallenges, 5 - selectedApiChallenges.length),
-  ];
-
   return {
-    challenges: shuffle(selected),
+    challenges: shuffle(openApiChallenges).slice(0, 5),
     currentChallengeIndex: 0,
     screens: Array.from({ length: 8 }, (_, i) => ({
       id: i,
@@ -141,7 +128,7 @@ function createNewGameState(
   return {
     phase: 'round1',
     round1: createInitialRound1(selectedR1Questions),
-    round2: createInitialRound2(availableRankingQuestions, openApiChallenges),
+    round2: createInitialRound2(openApiChallenges),
     final: createInitialFinal(8),
     totalScore: 0,
     startedAt: Date.now(),
@@ -154,6 +141,7 @@ export function useGameEngine() {
   const [finalQuestionsLoading, setFinalQuestionsLoading] = useState(false);
   const [rankingQuestionsLoading, setRankingQuestionsLoading] = useState(false);
   const [rankingQuestionsError, setRankingQuestionsError] = useState(false);
+  const [round2ChallengesError, setRound2ChallengesError] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(() => {
     return localStorage.getItem('8chances_sound') !== 'false';
   });
@@ -167,6 +155,7 @@ export function useGameEngine() {
     if (rankingQuestionsLoading) return;
     setRankingQuestionsLoading(true);
     setRankingQuestionsError(false);
+    setRound2ChallengesError(false);
 
     let availableQuestions = rankingQuestions;
     let openApiChallenges: Challenge2[] = [];
@@ -184,7 +173,10 @@ export function useGameEngine() {
     if (challengeResult.status === 'fulfilled') {
       openApiChallenges = challengeResult.value;
     } else {
-      console.warn('[Manche 2 API] Wikidata indisponible, utilisation des défis locaux.', challengeResult.reason);
+      setRound2ChallengesError(true);
+      console.error('[Manche 2 API] Impossible de préparer les défis Wikidata.', challengeResult.reason);
+      setRankingQuestionsLoading(false);
+      return;
     }
 
     try {
@@ -463,6 +455,7 @@ export function useGameEngine() {
     finalQuestionsLoading,
     rankingQuestionsLoading,
     rankingQuestionsError,
+    round2ChallengesError,
     soundEnabled,
     startNewGame,
     quitGame,

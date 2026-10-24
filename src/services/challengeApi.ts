@@ -1,8 +1,10 @@
-import type { Challenge2, Challenge2Item, RankingQuestion } from '../types/game';
+import type { Challenge2, Challenge2Item } from '../types/game';
 import { shuffle } from '../utils/gameUtils';
 
 const WIKIDATA_ENDPOINT = 'https://query.wikidata.org/sparql';
 const MINIMUM_OPEN_ANSWERS = 12;
+const MAX_OPEN_CHALLENGE_ANSWERS = 20;
+const MINIMUM_ROUND2_CHALLENGES = 3;
 
 interface WikidataBinding {
   item?: { value?: unknown };
@@ -63,6 +65,7 @@ const OPEN_CHALLENGE_QUERIES = [
     query: `
       SELECT DISTINCT ?item ?label WHERE {
         ?item wdt:P50 wd:Q34660;
+          wdt:P31/wdt:P279* wd:Q25379;
           rdfs:label ?label.
         FILTER(LANG(?label) = "fr")
       }
@@ -89,7 +92,6 @@ const OPEN_CHALLENGE_QUERIES = [
           FILTER(LANG(?alternateLabel) = "fr")
         }
       }
-      ORDER BY ?label
       LIMIT 200
     `,
   },
@@ -195,7 +197,8 @@ export async function fetchOpenRound2Challenges(): Promise<Challenge2[]> {
   const results = await Promise.allSettled(
     OPEN_CHALLENGE_QUERIES.map(async definition => {
       const bindings = await fetchWikidataQuery(definition.query, definition.theme);
-      const items = toOpenAnswerItems(bindings, definition.id === 'wikidata-world-capitals');
+      const items = shuffle(toOpenAnswerItems(bindings, definition.id === 'wikidata-world-capitals'))
+        .slice(0, MAX_OPEN_CHALLENGE_ANSWERS);
       const challenges: Challenge2[] = [];
 
       if (items.length >= MINIMUM_OPEN_ANSWERS) {
@@ -220,30 +223,14 @@ export async function fetchOpenRound2Challenges(): Promise<Challenge2[]> {
   const challenges = results.flatMap(result =>
     result.status === 'fulfilled' ? result.value : [],
   );
+  const failures = results.filter(result => result.status === 'rejected');
+  for (const failure of failures) {
+    if (failure.status === 'rejected') {
+      console.warn('[Manche 2 API] Un défi Wikidata n’a pas pu être chargé.', failure.reason);
+    }
+  }
+  if (challenges.length < MINIMUM_ROUND2_CHALLENGES) {
+    throw new Error(`Wikidata n’a fourni que ${challenges.length} défis, il en faut au moins ${MINIMUM_ROUND2_CHALLENGES}.`);
+  }
   return challenges;
-}
-
-export function createRound2Challenges(questions: RankingQuestion[]): Challenge2[] {
-  return questions
-    .filter(question => !question.id.startsWith('worldbank-'))
-    .flatMap(question => {
-      if (
-        question.options.length !== 8 ||
-        new Set(question.options.map(option => option.label)).size !== 8
-      ) return [];
-
-      return [{
-        id: `round2-${question.id}`,
-        theme: question.category,
-        instruction: `Citez les 8 réponses à cette question : ${question.question}`,
-        type: 'free-text' as const,
-        source: question.sourceYear
-          ? `${question.source ?? 'Catalogue intégré'} (${question.sourceYear})`
-          : question.source,
-        items: question.options.map(option => ({
-          id: `round2-${question.id}-${option.id}`,
-          label: option.label,
-        })),
-      }];
-    });
 }

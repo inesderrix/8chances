@@ -41,6 +41,7 @@ export default function App() {
               onToggleSound={engine.toggleSound}
               rankingQuestionsLoading={engine.rankingQuestionsLoading}
               rankingQuestionsError={engine.rankingQuestionsError}
+              round2ChallengesError={engine.round2ChallengesError}
             />
           </motion.div>
         )}
