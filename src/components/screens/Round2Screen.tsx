@@ -84,7 +84,14 @@ export function Round2Screen({ state, onChallengeComplete, isLoadingFinalQuestio
     if (!challenge) return;
     const usedItemIndexes = new Set<number>();
     const allAnswers = [...answers, ...extraAnswers];
-    const res = allAnswers.map(answer => {
+    const res = allAnswers.map((answer, answerIndex) => {
+      const promptedItem = challenge.items[answerIndex];
+      if (answerIndex < activeScreens.length && promptedItem?.screenTitle) {
+        const isCorrect = matchesAnswer(answer, promptedItem.label, promptedItem.aliases);
+        if (isCorrect) usedItemIndexes.add(answerIndex);
+        return isCorrect;
+      }
+
       const matchedItemIndex = challenge.items.findIndex((item, itemIdx) =>
         !usedItemIndexes.has(itemIdx) && matchesAnswer(answer, item.label, item.aliases)
       );
@@ -207,8 +214,12 @@ export function Round2Screen({ state, onChallengeComplete, isLoadingFinalQuestio
                           >
                             <img
                               src={challenge.items[answerIdx].imageUrl}
-                              alt="Personne à reconnaître"
+                              alt="Image à reconnaître"
                               loading="lazy"
+                              style={{
+                                objectFit: challenge.id === 'wikidata-country-flags' ? 'contain' : 'cover',
+                                background: challenge.id === 'wikidata-country-flags' ? '#fff' : undefined,
+                              }}
                             />
                           </button>
                         )}
@@ -348,7 +359,7 @@ export function Round2Screen({ state, onChallengeComplete, isLoadingFinalQuestio
             </button>
             <img
               src={enlargedImage}
-              alt="Personne à reconnaître"
+              alt="Image à reconnaître"
               className="round2-image-modal-content"
               onClick={event => event.stopPropagation()}
             />

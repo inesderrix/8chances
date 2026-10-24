@@ -78,7 +78,7 @@ export interface Challenge2 {
   theme: string;
   instruction: string;
   type: 'free-text' | 'image-identify' | 'multiple-choice';
-  items: Challenge2Item[]; // exactement 8
+  items: Challenge2Item[]; // au moins 8 réponses possibles
   source?: string;
 }
 
