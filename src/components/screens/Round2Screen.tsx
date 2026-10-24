@@ -19,6 +19,7 @@ export function Round2Screen({ state, onChallengeComplete, isLoadingFinalQuestio
   const [extraAnswers, setExtraAnswers] = useState<string[]>([]);
   const [timer, setTimer] = useState(60);
   const [expired, setExpired] = useState(false);
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
   const loggedChallengeId = useRef<string | null>(null);
 
   useEffect(() => {
@@ -29,7 +30,19 @@ export function Round2Screen({ state, onChallengeComplete, isLoadingFinalQuestio
     setExtraAnswers([]);
     setTimer(60);
     setExpired(false);
+    setEnlargedImage(null);
   }, [state.currentChallengeIndex]);
+
+  useEffect(() => {
+    if (!enlargedImage) return;
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') setEnlargedImage(null);
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [enlargedImage]);
 
   useEffect(() => {
     if (!import.meta.env.DEV || !challenge || loggedChallengeId.current === challenge.id) return;
@@ -185,12 +198,19 @@ export function Round2Screen({ state, onChallengeComplete, isLoadingFinalQuestio
                       {active ? (
                         <>
                         {challenge.type === 'image-identify' && challenge.items[answerIdx]?.imageUrl && (
-                          <img
-                            src={challenge.items[answerIdx].imageUrl}
-                            alt="Personne à reconnaître"
-                            loading="lazy"
-                            style={{ width: '100%', height: 104, objectFit: 'cover', borderRadius: 4 }}
-                          />
+                          <button
+                            type="button"
+                            className="round2-image-preview"
+                            onClick={() => setEnlargedImage(challenge.items[answerIdx].imageUrl ?? null)}
+                            aria-label="Agrandir l’image"
+                            title="Cliquer pour agrandir"
+                          >
+                            <img
+                              src={challenge.items[answerIdx].imageUrl}
+                              alt="Personne à reconnaître"
+                              loading="lazy"
+                            />
+                          </button>
                         )}
                         <input
                           className="round2-screen-input"
@@ -305,6 +325,36 @@ export function Round2Screen({ state, onChallengeComplete, isLoadingFinalQuestio
           </motion.div>
         </AnimatePresence>
       </div>
+      <AnimatePresence>
+        {enlargedImage && (
+          <motion.div
+            className="round2-image-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Image agrandie"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setEnlargedImage(null)}
+          >
+            <button
+              type="button"
+              className="round2-image-modal-close"
+              onClick={() => setEnlargedImage(null)}
+              aria-label="Fermer l’image agrandie"
+              autoFocus
+            >
+              ×
+            </button>
+            <img
+              src={enlargedImage}
+              alt="Personne à reconnaître"
+              className="round2-image-modal-content"
+              onClick={event => event.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
